@@ -12,6 +12,7 @@ from aws_cdk import (
     aws_logs as logs_,
     aws_s3 as s3_,
     aws_cloudtrail as cloudtrail_,
+    aws_cloudwatch as cloudwatch_,
     Duration,
     RemovalPolicy,
 )
@@ -120,6 +121,7 @@ class ApigwHttpApiLambdaDynamodbPythonCdkStack(Stack):
             memory_size=1024,
             timeout=Duration.minutes(5),
             log_retention=logs_.RetentionDays.ONE_MONTH,
+            tracing=lambda_.Tracing.ACTIVE,
         )
 
         # grant permission to lambda to write to demo table
@@ -134,13 +136,14 @@ class ApigwHttpApiLambdaDynamodbPythonCdkStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        # Create API Gateway with access logging
-        apigw_.LambdaRestApi(
+        # Create API Gateway with access logging and X-Ray tracing
+        api = apigw_.LambdaRestApi(
             self,
             "Endpoint",
             handler=api_hanlder,
             cloud_watch_role=True,
             deploy_options=apigw_.StageOptions(
+                tracing_enabled=True,
                 access_log_destination=apigw_.LogGroupLogDestination(api_log_group),
                 access_log_format=apigw_.AccessLogFormat.json_with_standard_fields(
                     caller=True,
@@ -154,4 +157,24 @@ class ApigwHttpApiLambdaDynamodbPythonCdkStack(Stack):
                     user=True,
                 ),
             ),
+        )
+
+        # CloudWatch Alarm for Lambda errors
+        lambda_error_alarm = cloudwatch_.Alarm(
+            self,
+            "LambdaErrorAlarm",
+            metric=api_hanlder.metric_errors(),
+            threshold=1,
+            evaluation_periods=1,
+            alarm_description="Alert when Lambda function errors occur",
+        )
+
+        # CloudWatch Alarm for API Gateway 5xx errors
+        api_error_alarm = cloudwatch_.Alarm(
+            self,
+            "ApiGateway5xxAlarm",
+            metric=api.metric_server_error(),
+            threshold=5,
+            evaluation_periods=1,
+            alarm_description="Alert when API Gateway returns 5xx errors",
         )
