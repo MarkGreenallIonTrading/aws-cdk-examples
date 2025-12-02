@@ -8,6 +8,31 @@ Creates an [AWS Lambda](https://aws.amazon.com/lambda/) function writing to [Ama
 
 ![architecture](docs/architecture.png)
 
+## Security and Logging
+
+This application implements comprehensive logging aligned with AWS Well-Architected Framework **SEC04-BP01: Configure service and application logging**:
+
+### Logging Components
+
+- **CloudTrail**: Captures all API activity across AWS services for audit and compliance
+- **VPC Flow Logs**: Records network traffic for security investigations and troubleshooting
+- **API Gateway Access Logs**: Logs all API requests with caller identity, IP, and response details
+- **Lambda Function Logs**: Includes request ID, source IP, and operation details for security context
+- **DynamoDB Point-in-Time Recovery**: Enables audit trails of data changes
+
+### Log Retention
+
+All logs are retained for **1 month** by default. CloudTrail logs in S3 are retained indefinitely for compliance.
+
+### Accessing Logs
+
+- **CloudWatch Logs**: Navigate to CloudWatch → Log groups
+  - `/aws/lambda/apigw_handler` - Lambda function logs
+  - VPC Flow Logs group - Network traffic logs
+  - API Gateway access logs group - API request logs
+- **CloudTrail**: Navigate to CloudTrail → Event history or query the S3 bucket
+- **CloudWatch Logs Insights**: Use for querying and analyzing logs across log groups
+
 ## Setup
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
@@ -90,6 +115,8 @@ Run below script to delete AWS resources created by this sample stack.
 ```
 cdk destroy
 ```
+
+**Note**: CloudTrail S3 bucket is retained after stack deletion for compliance purposes.
 
 ## Useful commands
 
